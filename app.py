@@ -130,7 +130,8 @@ with left_col:
         "Age",
         min_value=1,
         max_value=100,
-        value=40
+        value=40,
+        key="patient_age"
     )
 
     previous_size = st.slider(
