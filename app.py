@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 import streamlit as st
 import pandas as pd
 import pickle
@@ -323,4 +323,4 @@ st.divider()
 st.caption(
     "CancerGuard | Educational Machine Learning Project"
 )
->>>>>>> c59375cc300a1f28ac95784fd2cadc51d44c1b97
+
