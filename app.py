@@ -42,7 +42,7 @@ user_data = pd.DataFrame([[
 if st.button("Predict Tumor Growth Rate"):
     prediction = model.predict(user_data)[0]
     st.success(f"🎯 Predicted Tumor Growth Rate: {round(prediction, 2)}")
-=======
+
 import streamlit as st
 import pandas as pd
 import pickle
