@@ -2,50 +2,7 @@
 import streamlit as st
 import pandas as pd
 import pickle
-
-# Load saved model
-model = pickle.load(open("cancerGuard.pkl", "rb"))
-
-
-
-st.title("🧬 Tumor Growth Rate Prediction")
-
-st.write("Enter patient details below to predict tumor growth rate:")
-
-# User Inputs with Sliders
-age = st.slider("Age", 1, 100, 40)
-gender = st.radio("Gender", ["Male", "Female"])
-previous_size = st.slider("Previous Tumor Size (cm)", 0.0, 20.0, 5.0, step=0.1)
-time_since = st.slider("Time Since Diagnosis (months)", 0, 120, 12)
-stage = st.slider("Stage (I=1, II=2, III=3, IV=4)", 1, 4, 2)
-genetic_risk = st.slider("Genetic Risk (0=Low, 1=Medium, 2=High)", 0, 2, 1)
-smoking = st.radio("Smoking History", ["No", "Yes"])
-alcohol = st.slider("Alcohol Consumption (0=Low, 1=Medium, 2=High)", 0, 2, 1)
-bmi = st.slider("BMI", 10.0, 50.0, 22.0, step=0.1)
-
-treatment_chemo = st.checkbox("Chemotherapy")
-treatment_radio = st.checkbox("Radiotherapy")
-treatment_surgery = st.checkbox("Surgery")
-
-# Convert categorical to numeric
-gender_val = 0 if gender == "Male" else 1
-smoking_val = 1 if smoking == "Yes" else 0
-
-# Create dataframe for model
-user_data = pd.DataFrame([[
-    age, gender_val, previous_size, time_since, stage, genetic_risk,
-    smoking_val, alcohol, bmi,
-    int(treatment_chemo), int(treatment_radio), int(treatment_surgery)
-]], columns=model.feature_names_in_)
-
-# Predict
-if st.button("Predict Tumor Growth Rate"):
-    prediction = model.predict(user_data)[0]
-    st.success(f"🎯 Predicted Tumor Growth Rate: {round(prediction, 2)}")
-
-import streamlit as st
-import pandas as pd
-import pickle
+from pathlib import Path
 
 # ================= PAGE CONFIG =================
 st.set_page_config(
@@ -73,35 +30,33 @@ st.markdown(
         font-size: 18px;
         text-align: center;
         color: #555;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
     }
 
-    .prediction-box {
-        padding: 20px;
-        border-radius: 15px;
-        background-color: white;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        margin-top: 20px;
-    }
     </style>
     """,
     unsafe_allow_html=True
 )
 
 # ================= LOAD MODEL =================
-try:
-    with open("cancerGuard.pkl", "rb") as file:
-        model = pickle.load(file)
+MODEL_PATH = Path(__file__).parent / "cancerGuard.pkl"
 
+@st.cache_resource
+def load_model():
+    with open(MODEL_PATH, "rb") as file:
+        return pickle.load(file)
+
+try:
+    model = load_model()
 except FileNotFoundError:
     st.error(
-        "cancerGuard.pkl not found. "
+        "Model file cancerGuard.pkl was not found. "
         "Keep it in the same folder as app.py."
     )
     st.stop()
-
-except Exception as e:
-    st.error(f"Unable to load model: {e}")
+except Exception as error:
+    st.error("Unable to load the saved model.")
+    st.code(str(error))
     st.stop()
 
 # ================= TITLE =================
@@ -121,13 +76,13 @@ st.info(
 )
 
 # ================= PATIENT DETAILS =================
-left_col, right_col = st.columns([2, 1])
+left_col, right_col = st.columns(2)
 
 with left_col:
     st.subheader("Patient Details")
 
     age = st.slider(
-        "Age",
+        "Age (years)",
         min_value=1,
         max_value=100,
         value=40,
@@ -135,18 +90,20 @@ with left_col:
     )
 
     previous_size = st.slider(
-        "Previous Tumor Size",
+        "Previous Tumor Size (cm)",
         min_value=0.0,
         max_value=20.0,
         value=5.0,
-        step=0.1
+        step=0.1,
+        key="previous_tumor_size"
     )
 
     time_since = st.slider(
-        "Time Since Diagnosis",
+        "Time Since Diagnosis (months)",
         min_value=0,
         max_value=120,
-        value=12
+        value=12,
+        key="time_since_diagnosis"
     )
 
     bmi = st.slider(
@@ -154,7 +111,8 @@ with left_col:
         min_value=10.0,
         max_value=50.0,
         value=22.0,
-        step=0.1
+        step=0.1,
+        key="patient_bmi"
     )
 
 with right_col:
@@ -162,72 +120,79 @@ with right_col:
 
     gender = st.selectbox(
         "Gender",
-        ["Male", "Female"]
+        ["Male", "Female"],
+        key="patient_gender"
     )
 
     stage = st.selectbox(
         "Cancer Stage",
-        ["Stage I", "Stage II", "Stage III", "Stage IV"]
+        ["Stage I", "Stage II", "Stage III", "Stage IV"],
+        key="cancer_stage"
     )
 
     genetic_risk = st.selectbox(
         "Genetic Risk",
-        ["Low", "Medium", "High"]
+        ["Low", "Medium", "High"],
+        key="genetic_risk"
     )
 
     smoking = st.selectbox(
         "Smoking History",
-        ["No", "Yes"]
+        ["No", "Yes"],
+        key="smoking_history"
     )
 
     alcohol = st.selectbox(
         "Alcohol Consumption",
-        ["No", "Yes"]
+        ["Low", "Medium", "High"],
+        key="alcohol_consumption"
     )
 
     st.subheader("Treatment Information")
 
     chemotherapy = st.selectbox(
         "Chemotherapy",
-        ["No", "Yes"]
+        ["No", "Yes"],
+        key="chemotherapy"
     )
 
     radiotherapy = st.selectbox(
         "Radiotherapy",
-        ["No", "Yes"]
+        ["No", "Yes"],
+        key="radiotherapy"
     )
 
     surgery = st.selectbox(
         "Surgery",
-        ["No", "Yes"]
+        ["No", "Yes"],
+        key="surgery"
     )
 
-# ================= PREDICTION =================
-st.divider()
-st.subheader("Cancer Growth Risk Prediction")
-
-if st.button("Predict Risk", type="primary"):
-
-    # Create input with the feature names identified so far.
-    input_data = pd.DataFrame([{
+# ================= INPUT DATA =================
+def build_input_data():
+    return {
         "Age": age,
+        "Gender": 0 if gender == "Male" else 1,
         "Previous_Tumor_Size": previous_size,
         "Time_Since_Diagnosis": time_since,
-        "BMI": bmi,
-        "Gender": 1 if gender == "Female" else 0,
         "Stage": {
-          "Stage I": 1,
-          "Stage II": 2,
-          "Stage III": 3,
-          "Stage IV": 4
+            "Stage I": 1,
+            "Stage II": 2,
+            "Stage III": 3,
+            "Stage IV": 4
         }[stage],
         "Genetic_Risk": {
-          "Low": 1,
-          "Medium": 2,
-          "High": 3
+            "Low": 0,
+            "Medium": 1,
+            "High": 2
         }[genetic_risk],
-        "Smoking_History": 1 if smoking == "Yes" else 0,
-        "Alcohol_Consumption": 1 if alcohol == "Yes" else 0,
+        "Smoking_History": 0 if smoking == "No" else 1,
+        "Alcohol_Consumption": {
+            "Low": 0,
+            "Medium": 1,
+            "High": 2
+        }[alcohol],
+        "BMI": bmi,
         "Treatment_Chemotherapy": (
             1 if chemotherapy == "Yes" else 0
         ),
@@ -237,13 +202,22 @@ if st.button("Predict Risk", type="primary"):
         "Treatment_Surgery": (
             1 if surgery == "Yes" else 0
         )
-    }])
+    }
 
-    # Find the model's expected feature names, if available.
+# ================= PREDICTION =================
+st.divider()
+st.subheader("Cancer Growth Prediction")
+
+if st.button("Predict Tumor Growth Rate", type="primary"):
+
+    input_data = pd.DataFrame([build_input_data()])
+
+    # Find expected features from the saved model.
     expected_features = getattr(
         model, "feature_names_in_", None
     )
 
+    # Also support common Scikit-learn pipelines.
     if expected_features is None and hasattr(model, "named_steps"):
         for step in reversed(list(model.named_steps.values())):
             expected_features = getattr(
@@ -255,73 +229,62 @@ if st.button("Predict Risk", type="primary"):
     if expected_features is not None:
         expected_features = list(expected_features)
 
-        missing_features = [
-            col for col in expected_features
-            if col not in input_data.columns
+        missing = [
+            feature for feature in expected_features
+            if feature not in input_data.columns
         ]
 
-        extra_features = [
-            col for col in input_data.columns
-            if col not in expected_features
-        ]
-
-        if missing_features or extra_features:
-            st.error("Model feature mismatch detected.")
-
-            if missing_features:
-                st.write("Missing features:", missing_features)
-
-            if extra_features:
-                st.write("Unexpected features:", extra_features)
-
+        if missing:
+            st.error(
+                "The saved model expects features that are not "
+                "provided by this form."
+            )
+            st.write("Missing model features:", missing)
             st.info(
-                "The input fields must match the training dataset. "
-                "Add missing fields and use the same encoding as "
-                "the model training code."
+                "The input names and encoding must match the "
+                "dataset and preprocessing used during training."
             )
             st.stop()
 
         input_data = input_data[expected_features]
 
-    # ================= RUN PREDICTION =================
     try:
-        prediction = model.predict(input_data)
+        prediction = model.predict(input_data)[0]
 
-        st.markdown(
-            '<div class="prediction-box">',
-            unsafe_allow_html=True
+        st.success(
+            f"Predicted Tumor Growth Rate: {prediction:.2f}"
+            if isinstance(prediction, (int, float))
+            else f"Model Output: {prediction}"
         )
 
-        st.subheader("Prediction Result")
-        st.write("Model output:", prediction[0])
-
+        # Show probabilities only for classification models.
         if hasattr(model, "predict_proba"):
             probabilities = model.predict_proba(input_data)[0]
 
-            st.write("Model class probabilities:")
+            st.subheader("Model Class Probabilities")
 
-            for class_name, probability in zip(
-                model.classes_, probabilities
-            ):
-                st.write(
-                    f"{class_name}: {probability * 100:.2f}%"
-                )
+            probability_data = pd.DataFrame({
+                "Class": model.classes_,
+                "Probability (%)": [
+                    round(float(probability) * 100, 2)
+                    for probability in probabilities
+                ]
+            })
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.dataframe(
+                probability_data,
+                hide_index=True,
+                use_container_width=True
+            )
 
-        st.warning(
-            "This is an educational model output, not a medical "
-            "diagnosis or a validated clinical risk estimate."
-        )
+    except Exception as error:
+        st.error("Prediction failed.")
+        st.code(str(error))
 
-    except Exception as e:
-        st.error("Prediction failed. Check the model input format.")
-        st.code(str(e))
-
-# ================= FOOTER =================
 st.divider()
 
 st.caption(
-    "CancerGuard | Educational Machine Learning Project"
+    "CancerGuard | Educational Machine-Learning Project. "
+    "This output is not a medical diagnosis or a validated "
+    "clinical risk estimate."
 )
-
